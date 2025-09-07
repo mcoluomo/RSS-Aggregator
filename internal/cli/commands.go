@@ -31,11 +31,20 @@ func (c *Commands) Register(name string, f func(*config.State, Command) error) {
 
 func LoginHandler(s *config.State, cmd Command) error {
 	if len(cmd.Args) == 0 {
-		return fmt.Errorf("no arguments were given")
+		return fmt.Errorf("no argument were given")
 	}
 	s.StConfig.SetUser(os.Args[2])
 	s.StConfig.Current_user_name = cmd.Args[0]
 	fmt.Printf("⇒ %s\nlogin with the given username was successful\n", cmd.Args[0])
+
+	return nil
+}
+
+func RegisterHandler(s *config.State, cmd Command) error {
+	if len(cmd.Args) == 0 {
+		return fmt.Errorf("no argument were given")
+	}
+	s.Db.CreateUser(ctx context.Context, arg database.CreateUserParams)
 
 	return nil
 }
