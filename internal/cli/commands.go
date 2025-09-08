@@ -1,10 +1,15 @@
 package cli
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/mcoluomo/RSS-Aggregator/internal/config"
+	"github.com/mcoluomo/RSS-Aggregator/internal/database"
 )
 
 type Command struct {
@@ -31,20 +36,83 @@ func (c *Commands) Register(name string, f func(*config.State, Command) error) {
 
 func LoginHandler(s *config.State, cmd Command) error {
 	if len(cmd.Args) == 0 {
-		return fmt.Errorf("no argument were given")
+		return fmt.Errorf("no argument was given")
 	}
+	ctx := context.Background()
+	exists, err := s.Db.UserExists(ctx, cmd.Args[0])
+	if err != nil {
+		return fmt.Errorf("error checking if user exists: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("User %s is not registered", cmd.Args[0])
+	}
+	// add an else clause that tells the user that they are already logged in
+
 	s.StConfig.SetUser(os.Args[2])
 	s.StConfig.Current_user_name = cmd.Args[0]
-	fmt.Printf("⇒ %s\nlogin with the given username was successful\n", cmd.Args[0])
+	fmt.Printf("⇒ %s\nlogin with %s was successful\n", cmd.Args[0], cmd.Args[0])
 
 	return nil
 }
 
 func RegisterHandler(s *config.State, cmd Command) error {
 	if len(cmd.Args) == 0 {
-		return fmt.Errorf("no argument were given")
+		return fmt.Errorf("no argument was given")
 	}
-	s.Db.CreateUser(ctx context.Context, arg database.CreateUserParams)
+
+	ctx := context.Background()
+	exists, err := s.Db.UserExists(ctx, cmd.Args[0])
+	if err != nil {
+		return fmt.Errorf("error checking if user exists: %w", err)
+	}
+	if exists {
+		return fmt.Errorf("user %s is already registered", cmd.Args[0])
+	}
+
+	createUserParams := database.CreateUserParams{
+		ID:        uuid.New(),
+		CreatedAt: sql.NullTime{Time: time.Now(), Valid: true},
+		UpdatedAt: sql.NullTime{Time: time.Now(), Valid: true},
+		Name:      cmd.Args[0],
+	}
+
+	_, err = s.Db.CreateUser(ctx, createUserParams)
+	if err != nil {
+		return fmt.Errorf("error encountered creating a user: %w", err)
+	}
+
+	s.StConfig.SetUser(os.Args[2]) // migth remove this
+	s.StConfig.Current_user_name = cmd.Args[0]
+	fmt.Printf("user %s was successfully registered", cmd.Args[0])
+
+	return nil
+}
+
+func ResetHandler(s *config.State, cmd Command) error {
+	if len(cmd.Args) > 0 {
+		return fmt.Errorf("command does not accept any arguments")
+	}
+
+	ctx := context.Background()
+	if err := s.Db.DeleteAll(ctx); err != nil {
+		return fmt.Errorf("error encountered deleting all users: %w", err)
+	}
+	fmt.Println("All users have been deleted!")
+
+	return nil
+}
+
+func UserHandler(s *config.State, cmd Command) error {
+	if len(cmd.Args) > 0 {
+		return fmt.Errorf("command does not accept any arguments")
+	}
+
+	ctx := context.Background()
+	users, err := s.Db.GetUsers(ctx)
+	if err != nil {
+		return fmt.Errorf("error encountered listing all users: %w", err)
+	}
+	
 
 	return nil
 }

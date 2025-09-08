@@ -14,10 +14,12 @@ import (
 )
 
 func main() {
-	db, err := sql.Open("pgx", "user=postgres password=olu dbname=gator sslmode=disable")
+	fmt.Println("\nUsing rss-aggregator...")
+	db, err := sql.Open("pgx", "postgres://postgres:olu@localhost:5432/gator?sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer db.Close()
 	dbQueries := database.New(db)
 
 	cfg, err := config.Read()
@@ -26,13 +28,15 @@ func main() {
 	}
 	fmt.Printf("Reading config with the contents: %+v\n", cfg)
 
-	cfgState := &config.State{StConfig: &cfg}
+	cfgState := &config.State{StConfig: &cfg, Db: dbQueries}
 
 	cmds := &cli.Commands{Handlers: map[string]func(*config.State, cli.Command) error{}}
 	cmds.Register("login", cli.LoginHandler)
+	cmds.Register("register", cli.RegisterHandler)
+	cmds.Register("reset", cli.ResetHandler)
 
-	if len(os.Args) < 2 {
-		log.Fatalf("\nUsing rss-aggregator...\nPlease provide <command> [args]")
+	if len(os.Args) < 2 && os.Args[1] != "reset" {
+		log.Fatalf("Please provide <command> [args]")
 	}
 
 	cmd := cli.Command{Name: os.Args[1], Args: os.Args[2:]}
@@ -44,5 +48,5 @@ func main() {
 	if err != nil {
 		log.Fatalf("error reading config: %v", err)
 	}
-	fmt.Printf("Reading config again: %+v\n", cfg)
+	fmt.Printf("\nReading config again: %+v\n", cfg)
 }

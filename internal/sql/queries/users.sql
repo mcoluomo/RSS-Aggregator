@@ -7,3 +7,12 @@ VALUES (
     $4
 )
 RETURNING *;
+
+-- name: GetUsers :many
+SELECT * FROM users;
+
+-- name: UserExists :one
+SELECT EXISTS(SELECT 1 FROM users WHERE name = $1);
+
+-- name: DeleteAll :exec
+DELETE FROM users;
