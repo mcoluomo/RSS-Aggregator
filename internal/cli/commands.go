@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mcoluomo/RSS-Aggregator/internal/config"
 	"github.com/mcoluomo/RSS-Aggregator/internal/database"
+	"github.com/mcoluomo/RSS-Aggregator/internal/rss"
 )
 
 type Command struct {
@@ -20,6 +21,8 @@ type Command struct {
 type Commands struct {
 	Handlers map[string]func(*config.State, Command) error
 }
+
+const feedUrl string = "https://www.wagslane.dev/index.xml"
 
 func (c *Commands) Run(s *config.State, cmd Command) error {
 	handler, exist := c.Handlers[cmd.Name]
@@ -38,7 +41,9 @@ func LoginHandler(s *config.State, cmd Command) error {
 	if len(cmd.Args) == 0 {
 		return fmt.Errorf("no argument was given")
 	}
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+
+	defer cancel()
 	exists, err := s.Db.UserExists(ctx, cmd.Args[0])
 	if err != nil {
 		return fmt.Errorf("error checking if user exists: %w", err)
@@ -59,8 +64,9 @@ func RegisterHandler(s *config.State, cmd Command) error {
 	if len(cmd.Args) == 0 {
 		return fmt.Errorf("no argument was given")
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 
-	ctx := context.Background()
+	defer cancel()
 	exists, err := s.Db.UserExists(ctx, cmd.Args[0])
 	if err != nil {
 		return fmt.Errorf("error checking if user exists: %w", err)
@@ -93,7 +99,9 @@ func ResetHandler(s *config.State, cmd Command) error {
 		return fmt.Errorf("command does not accept any arguments")
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+
+	defer cancel()
 	if err := s.Db.DeleteAll(ctx); err != nil {
 		return fmt.Errorf("error encountered deleting all users: %w", err)
 	}
@@ -107,12 +115,43 @@ func UserHandler(s *config.State, cmd Command) error {
 		return fmt.Errorf("command does not accept any arguments")
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+
+	defer cancel()
 	users, err := s.Db.GetUsers(ctx)
 	if err != nil {
-		return fmt.Errorf("error encountered listing all users: %w", err)
+		return fmt.Errorf("error encountered fetching all users: %w", err)
 	}
-	
+	fmt.Println("Listing all users...")
+	if len(users) == 0 {
+		fmt.Println("No users to list")
+	}
+
+	for _, user := range users {
+		if user.Name == s.StConfig.Current_user_name {
+			fmt.Println("* " + s.StConfig.Current_user_name + " (current)")
+		} else {
+			fmt.Println("* " + user.Name)
+		}
+	}
+
+	return nil
+}
+
+func AggHandler(s *config.State, cmd Command) error {
+	if len(cmd.Args) > 0 {
+		return fmt.Errorf("command does not accept any arguments")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+
+	defer cancel()
+
+	feedData, err := rss.FetchFeed(ctx, feedUrl)
+	if err != nil {
+		return fmt.Errorf("failed fetching url feed %w", err)
+	}
+
+	fmt.Printf("\nlisting feed data:\n %v", feedData)
 
 	return nil
 }
