@@ -38,7 +38,7 @@ func main() {
 	cmds.Register("agg", cli.AggHandler)
 
 	if len(os.Args) < 2 && os.Args[1] != "reset" && os.Args[1] != "users" && os.Args[1] != "agg" {
-		log.Fatalf("Please provide <command> [args]")
+		log.Fatalf("Please provide <command> [arg]")
 	}
 
 	cmd := cli.Command{Name: os.Args[1], Args: os.Args[2:]}

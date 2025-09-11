@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
 	"time"
 
@@ -89,7 +90,7 @@ func RegisterHandler(s *config.State, cmd Command) error {
 
 	s.StConfig.SetUser(os.Args[2]) // migth remove this
 	s.StConfig.Current_user_name = cmd.Args[0]
-	fmt.Printf("user %s was successfully registered", cmd.Args[0])
+	fmt.Printf("user 【%s】 was successfully registered", cmd.Args[0])
 
 	return nil
 }
@@ -154,4 +155,58 @@ func AggHandler(s *config.State, cmd Command) error {
 	fmt.Printf("\nlisting feed data:\n %v", feedData)
 
 	return nil
+}
+
+func AddFeedHandler(s *config.State, cmd Command) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+
+	defer cancel()
+
+	users, err := s.Db.GetUsers(ctx)
+	if err != nil {
+		return fmt.Errorf("AddFeedHandler failed fetching users: %w", err)
+	}
+
+	if len(users) == 0 {
+		return fmt.Errorf("no users in database to add a feed")
+	}
+
+	if len(cmd.Args) == 0 {
+		return fmt.Errorf("no arguments where given")
+	}
+
+	// refine it tomorrow
+	if isValidUrl(cmd.Args[1]) {
+		return fmt.Errorf("Please provide <command> [args] ")
+	}
+
+	newFeed := database.CreateFeedParams{
+		ID:        uuid.New(),
+		CreatedAt: sql.NullTime{Time: time.Now(), Valid: true},
+		UpdatedAt: sql.NullTime{Time: time.Now(), Valid: true},
+		Name:      cmd.Args[0],
+		Url:       cmd.Args[1],
+		UserID:    fetchUserId(users, s),
+	}
+
+	feed, err := s.Db.CreateFeed(ctx, newFeed)
+	if err != nil {
+		return fmt.Errorf("failed creating feed")
+	}
+
+	return nil
+}
+
+func fetchUserId(users []database.User, s *config.State) uuid.UUID {
+	for _, user := range users {
+		if user.Name == s.StConfig.Current_user_name {
+			return user.ID
+		}
+	}
+	return [16]byte{}
+}
+
+func isValidUrl(str string) bool {
+	u, err := url.Parse(str)
+	return err == nil && u.Scheme != "" && u.Host != ""
 }
