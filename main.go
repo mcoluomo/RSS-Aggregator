@@ -36,8 +36,10 @@ func main() {
 	cmds.Register("reset", cli.ResetHandler)
 	cmds.Register("users", cli.UserHandler)
 	cmds.Register("agg", cli.AggHandler)
+	cmds.Register("addfeed", cli.AddFeedHandler)
+	cmds.Register("feeds", cli.PrintFeedsHandler)
 
-	if len(os.Args) < 2 && os.Args[1] != "reset" && os.Args[1] != "users" && os.Args[1] != "agg" {
+	if len(os.Args) < 2 {
 		log.Fatalf("Please provide <command> [arg]")
 	}
 

@@ -12,6 +12,50 @@ import (
 	"github.com/google/uuid"
 )
 
+const createFeed = `-- name: CreateFeed :one
+INSERT INTO feeds (id, created_at, updated_at, name, url, user_id)
+
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6
+)
+RETURNING id, created_at, updated_at, name, url, user_id
+`
+
+type CreateFeedParams struct {
+	ID        uuid.UUID
+	CreatedAt sql.NullTime
+	UpdatedAt sql.NullTime
+	Name      string
+	Url       string
+	UserID    uuid.UUID
+}
+
+func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, error) {
+	row := q.db.QueryRowContext(ctx, createFeed,
+		arg.ID,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+		arg.Name,
+		arg.Url,
+		arg.UserID,
+	)
+	var i Feed
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Url,
+		&i.UserID,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, created_at, updated_at, name)
 VALUES (
@@ -54,6 +98,41 @@ DELETE FROM users
 func (q *Queries) DeleteAll(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, deleteAll)
 	return err
+}
+
+const getUserFeeds = `-- name: GetUserFeeds :many
+SELECT  users.name AS user_name, feeds.name AS feed_name, feeds.url AS feeds_url
+FROM users
+INNER JOIN feeds ON users.id = feeds.user_id
+`
+
+type GetUserFeedsRow struct {
+	UserName string
+	FeedName string
+	FeedsUrl string
+}
+
+func (q *Queries) GetUserFeeds(ctx context.Context) ([]GetUserFeedsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUserFeeds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserFeedsRow
+	for rows.Next() {
+		var i GetUserFeedsRow
+		if err := rows.Scan(&i.UserName, &i.FeedName, &i.FeedsUrl); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getUsers = `-- name: GetUsers :many

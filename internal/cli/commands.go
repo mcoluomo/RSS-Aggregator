@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -47,16 +48,16 @@ func LoginHandler(s *config.State, cmd Command) error {
 	defer cancel()
 	exists, err := s.Db.UserExists(ctx, cmd.Args[0])
 	if err != nil {
-		return fmt.Errorf("error checking if user exists: %w", err)
+		return fmt.Errorf("failed checking if user exists: %w", err)
 	}
 	if !exists {
-		return fmt.Errorf("User %s is not registered", cmd.Args[0])
+		return fmt.Errorf("User 【%s】 is not registered", cmd.Args[0])
 	}
 	// add an else clause that tells the user that they are already logged in
 
 	s.StConfig.SetUser(os.Args[2])
 	s.StConfig.Current_user_name = cmd.Args[0]
-	fmt.Printf("⇒ %s\nlogin with %s was successful\n", cmd.Args[0], cmd.Args[0])
+	fmt.Printf("⇒ 【%s】\nlogin with 【%s】 was successful\n", cmd.Args[0], cmd.Args[0])
 
 	return nil
 }
@@ -70,10 +71,10 @@ func RegisterHandler(s *config.State, cmd Command) error {
 	defer cancel()
 	exists, err := s.Db.UserExists(ctx, cmd.Args[0])
 	if err != nil {
-		return fmt.Errorf("error checking if user exists: %w", err)
+		return fmt.Errorf("failed checking if user exists: %w", err)
 	}
 	if exists {
-		return fmt.Errorf("user %s is already registered", cmd.Args[0])
+		return fmt.Errorf("user 【%s】is already registered", cmd.Args[0])
 	}
 
 	createUserParams := database.CreateUserParams{
@@ -85,11 +86,10 @@ func RegisterHandler(s *config.State, cmd Command) error {
 
 	_, err = s.Db.CreateUser(ctx, createUserParams)
 	if err != nil {
-		return fmt.Errorf("error encountered creating a user: %w", err)
+		return fmt.Errorf("failed creating a user: %w", err)
 	}
 
-	s.StConfig.SetUser(os.Args[2]) // migth remove this
-	s.StConfig.Current_user_name = cmd.Args[0]
+	s.StConfig.SetUser(cmd.Args[0])
 	fmt.Printf("user 【%s】 was successfully registered", cmd.Args[0])
 
 	return nil
@@ -104,8 +104,10 @@ func ResetHandler(s *config.State, cmd Command) error {
 
 	defer cancel()
 	if err := s.Db.DeleteAll(ctx); err != nil {
-		return fmt.Errorf("error encountered deleting all users: %w", err)
+		return fmt.Errorf("failed deleting all users: %w", err)
 	}
+
+	s.StConfig.SetUser("[None]")
 	fmt.Println("All users have been deleted!")
 
 	return nil
@@ -121,7 +123,7 @@ func UserHandler(s *config.State, cmd Command) error {
 	defer cancel()
 	users, err := s.Db.GetUsers(ctx)
 	if err != nil {
-		return fmt.Errorf("error encountered fetching all users: %w", err)
+		return fmt.Errorf("failed fetching all users: %w", err)
 	}
 	fmt.Println("Listing all users...")
 	if len(users) == 0 {
@@ -171,13 +173,15 @@ func AddFeedHandler(s *config.State, cmd Command) error {
 		return fmt.Errorf("no users in database to add a feed")
 	}
 
-	if len(cmd.Args) == 0 {
-		return fmt.Errorf("no arguments where given")
+	if len(cmd.Args) < 2 {
+		return fmt.Errorf("Please provide valid arguments for this command: <command> 【[feedName]】 【[url]】")
+	}
+	if strings.TrimSpace(cmd.Args[0]) == "" {
+		return fmt.Errorf("Please provide valid feedName argument for this command: <command> 【[feedName]】 [url]")
 	}
 
-	// refine it tomorrow
-	if isValidUrl(cmd.Args[1]) {
-		return fmt.Errorf("Please provide <command> [args] ")
+	if !isValidUrl(cmd.Args[1]) {
+		return fmt.Errorf("Please provide valid url: <command> [feedName] 【[url]】")
 	}
 
 	newFeed := database.CreateFeedParams{
@@ -194,6 +198,8 @@ func AddFeedHandler(s *config.State, cmd Command) error {
 		return fmt.Errorf("failed creating feed")
 	}
 
+	fmt.Printf("%v successfuly created feed for user 【%s】\n", feed.CreatedAt, s.StConfig.Current_user_name)
+
 	return nil
 }
 
@@ -203,10 +209,42 @@ func fetchUserId(users []database.User, s *config.State) uuid.UUID {
 			return user.ID
 		}
 	}
-	return [16]byte{}
+	return uuid.Nil
 }
 
 func isValidUrl(str string) bool {
 	u, err := url.Parse(str)
+
 	return err == nil && u.Scheme != "" && u.Host != ""
+}
+
+func PrintFeedsHandler(s *config.State, cmd Command) error {
+	if len(cmd.Args) > 0 {
+		return fmt.Errorf("command does not accept any arguments")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+
+	defer cancel()
+
+	users, err := s.Db.GetUsers(ctx)
+	if err != nil {
+		return fmt.Errorf("PrintFeedHandler failed fetching users: %w", err)
+	}
+
+	if len(users) == 0 {
+		return fmt.Errorf("no users in database to list feeds from")
+	}
+
+	userAndFeeds, err := s.Db.GetUserFeeds(ctx)
+	if err != nil {
+		return fmt.Errorf("failed fetching user feeds: %s", err)
+	}
+
+	fmt.Println("listing all feeds...\n\nuser_name | feed_name | feed_url")
+
+	for _, userFeedRow := range userAndFeeds {
+		fmt.Printf("%s | %s | %s\n", userFeedRow.UserName, userFeedRow.FeedName, userFeedRow.FeedsUrl)
+	}
+
+	return nil
 }
