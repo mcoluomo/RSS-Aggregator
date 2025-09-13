@@ -31,6 +31,20 @@ VALUES (
 RETURNING *;
 
 -- name: GetUserFeeds :many
-SELECT  users.name AS user_name, feeds.name AS feed_name, feeds.url AS feeds_url
+SELECT  users.name AS user_name, feeds.name AS feed_name, feeds.url AS feeds_url, feeds.id AS feed_id
 FROM users
 INNER JOIN feeds ON users.id = feeds.user_id;
+
+
+-- name: CreateFeedFollow :one
+WITH inserted_feed_follow AS (
+    INSERT INTO feed_follows (user_id, feed_id, created_at, updated_at)
+    VALUES ($1, $2, $3, $4)
+    RETURNING *
+)
+SELECT inserted_feed_follow.*,
+    users.name AS user_name,
+    feeds.name AS feed_name
+FROM inserted_feed_follow
+JOIN users ON inserted_feed_follow.user_id = users.id
+JOIN feeds ON inserted_feed_follow.feed_id = users.id;

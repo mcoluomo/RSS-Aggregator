@@ -211,6 +211,11 @@ func fetchUserId(users []database.User, s *config.State) uuid.UUID {
 	}
 	return uuid.Nil
 }
+func fetchtFeedId(userFeeds []database.GetUserFeedsRow, s *config.State) uui.uuid {
+	for _, feed := range userFeeds {
+		return feed.FeedID
+
+}
 
 func isValidUrl(str string) bool {
 	u, err := url.Parse(str)
@@ -237,7 +242,7 @@ func PrintFeedsHandler(s *config.State, cmd Command) error {
 
 	userAndFeeds, err := s.Db.GetUserFeeds(ctx)
 	if err != nil {
-		return fmt.Errorf("failed fetching user feeds: %s", err)
+		return fmt.Errorf("PrintFeedsHandler failed fetching user feeds: %s", err)
 	}
 
 	fmt.Println("listing all feeds...\n\nuser_name | feed_name | feed_url")
@@ -245,6 +250,25 @@ func PrintFeedsHandler(s *config.State, cmd Command) error {
 	for _, userFeedRow := range userAndFeeds {
 		fmt.Printf("%s | %s | %s\n", userFeedRow.UserName, userFeedRow.FeedName, userFeedRow.FeedsUrl)
 	}
+
+	return nil
+}
+
+func FollowHandler(s *config.State, cmd Command) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+
+	defer cancel()
+	userFeeds, err := s.Db.GetUserFeeds(ctx)
+	if err != nil {
+		return fmt.Errorf("FollowHandler failed fetching user feeds", err)
+	}
+
+
+	feedFollowParams := database.CreateFeedFollowParams{
+
+	}
+
+	NewFeedFollow, err := s.Db.CreateFeedFollow(ctx)
 
 	return nil
 }

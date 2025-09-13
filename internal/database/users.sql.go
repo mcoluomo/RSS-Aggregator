@@ -56,6 +56,55 @@ func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, e
 	return i, err
 }
 
+const createFeedFollow = `-- name: CreateFeedFollow :one
+WITH inserted_feed_follow AS (
+    INSERT INTO feed_follows (user_id, feed_id, created_at, updated_at)
+    VALUES ($1, $2, $3, $4)
+    RETURNING created_at, updated_at, user_id, feed_id
+)
+SELECT inserted_feed_follow.created_at, inserted_feed_follow.updated_at, inserted_feed_follow.user_id, inserted_feed_follow.feed_id,
+    users.name AS user_name,
+    feeds.name AS feed_name
+FROM inserted_feed_follow
+JOIN users ON inserted_feed_follow.user_id = users.id
+JOIN feeds ON inserted_feed_follow.feed_id = users.id
+`
+
+type CreateFeedFollowParams struct {
+	UserID    uuid.UUID
+	FeedID    uuid.UUID
+	CreatedAt sql.NullTime
+	UpdatedAt sql.NullTime
+}
+
+type CreateFeedFollowRow struct {
+	CreatedAt sql.NullTime
+	UpdatedAt sql.NullTime
+	UserID    uuid.UUID
+	FeedID    uuid.UUID
+	UserName  string
+	FeedName  string
+}
+
+func (q *Queries) CreateFeedFollow(ctx context.Context, arg CreateFeedFollowParams) (CreateFeedFollowRow, error) {
+	row := q.db.QueryRowContext(ctx, createFeedFollow,
+		arg.UserID,
+		arg.FeedID,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	var i CreateFeedFollowRow
+	err := row.Scan(
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UserID,
+		&i.FeedID,
+		&i.UserName,
+		&i.FeedName,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, created_at, updated_at, name)
 VALUES (
@@ -101,7 +150,7 @@ func (q *Queries) DeleteAll(ctx context.Context) error {
 }
 
 const getUserFeeds = `-- name: GetUserFeeds :many
-SELECT  users.name AS user_name, feeds.name AS feed_name, feeds.url AS feeds_url
+SELECT  users.name AS user_name, feeds.name AS feed_name, feeds.url AS feeds_url, feeds.id AS feed_id
 FROM users
 INNER JOIN feeds ON users.id = feeds.user_id
 `
@@ -110,6 +159,7 @@ type GetUserFeedsRow struct {
 	UserName string
 	FeedName string
 	FeedsUrl string
+	FeedID   uuid.UUID
 }
 
 func (q *Queries) GetUserFeeds(ctx context.Context) ([]GetUserFeedsRow, error) {
@@ -121,7 +171,12 @@ func (q *Queries) GetUserFeeds(ctx context.Context) ([]GetUserFeedsRow, error) {
 	var items []GetUserFeedsRow
 	for rows.Next() {
 		var i GetUserFeedsRow
-		if err := rows.Scan(&i.UserName, &i.FeedName, &i.FeedsUrl); err != nil {
+		if err := rows.Scan(
+			&i.UserName,
+			&i.FeedName,
+			&i.FeedsUrl,
+			&i.FeedID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

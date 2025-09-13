@@ -13,4 +13,4 @@ CREATE TABLE feeds (
 );
 
 -- +goose Down
-DROP TABLE feeds;
+DROP TABLE IF EXISTS feeds;
