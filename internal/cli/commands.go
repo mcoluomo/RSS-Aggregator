@@ -3,9 +3,9 @@ package cli
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -43,6 +43,11 @@ func LoginHandler(s *config.State, cmd Command) error {
 	if len(cmd.Args) == 0 {
 		return fmt.Errorf("no argument was given")
 	}
+
+	if len(cmd.Args) > 1 {
+		return fmt.Errorf("command only takes one argumeant: <command> [userName]")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 
 	defer cancel()
@@ -55,8 +60,7 @@ func LoginHandler(s *config.State, cmd Command) error {
 	}
 	// add an else clause that tells the user that they are already logged in
 
-	s.StConfig.SetUser(os.Args[2])
-	s.StConfig.Current_user_name = cmd.Args[0]
+	s.StConfig.SetUser(cmd.Args[0])
 	fmt.Printf("⇒ 【%s】\nlogin with 【%s】 was successful\n", cmd.Args[0], cmd.Args[0])
 
 	return nil
@@ -66,6 +70,11 @@ func RegisterHandler(s *config.State, cmd Command) error {
 	if len(cmd.Args) == 0 {
 		return fmt.Errorf("no argument was given")
 	}
+
+	if len(cmd.Args) > 1 {
+		return fmt.Errorf("command only takes one argumeant: <command> [userName]")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 
 	defer cancel()
@@ -103,7 +112,7 @@ func ResetHandler(s *config.State, cmd Command) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 
 	defer cancel()
-	if err := s.Db.DeleteAll(ctx); err != nil {
+	if err := s.Db.DeleteAllUsers(ctx); err != nil {
 		return fmt.Errorf("failed deleting all users: %w", err)
 	}
 
@@ -173,9 +182,14 @@ func AddFeedHandler(s *config.State, cmd Command) error {
 		return fmt.Errorf("no users in database to add a feed")
 	}
 
+	if len(cmd.Args) > 2 {
+		return fmt.Errorf("command only takes two argumeants: <command> 【[feedName]】 【[url]】")
+	}
+
 	if len(cmd.Args) < 2 {
 		return fmt.Errorf("Please provide valid arguments for this command: <command> 【[feedName]】 【[url]】")
 	}
+
 	if strings.TrimSpace(cmd.Args[0]) == "" {
 		return fmt.Errorf("Please provide valid feedName argument for this command: <command> 【[feedName]】 [url]")
 	}
@@ -211,11 +225,6 @@ func fetchUserId(users []database.User, s *config.State) uuid.UUID {
 	}
 	return uuid.Nil
 }
-func fetchtFeedId(userFeeds []database.GetUserFeedsRow, s *config.State) uui.uuid {
-	for _, feed := range userFeeds {
-		return feed.FeedID
-
-}
 
 func isValidUrl(str string) bool {
 	u, err := url.Parse(str)
@@ -240,35 +249,123 @@ func PrintFeedsHandler(s *config.State, cmd Command) error {
 		return fmt.Errorf("no users in database to list feeds from")
 	}
 
-	userAndFeeds, err := s.Db.GetUserFeeds(ctx)
+	feeds, err := s.Db.GetFeeds(ctx)
 	if err != nil {
-		return fmt.Errorf("PrintFeedsHandler failed fetching user feeds: %s", err)
+		return fmt.Errorf("PrintFeedsHandler failed fetching feeds: %w", err)
 	}
+
+	if len(feeds) == 0 {
+		fmt.Println("No feeds found.")
+		return nil
+	}
+	fmt.Printf("Found %d feeds:\n", len(feeds))
 
 	fmt.Println("listing all feeds...\n\nuser_name | feed_name | feed_url")
 
-	for _, userFeedRow := range userAndFeeds {
-		fmt.Printf("%s | %s | %s\n", userFeedRow.UserName, userFeedRow.FeedName, userFeedRow.FeedsUrl)
+	for _, feed := range feeds {
+		user, err := s.Db.GetUserById(ctx, feed.UserID)
+		if err != nil {
+			return fmt.Errorf("failed getting user: %w", err)
+		}
+		printFeed(feed, user)
 	}
-
 	return nil
+}
+
+func printFeed(feed database.Feed, user database.User) {
+	fmt.Printf("* ID:            %s\n", feed.ID)
+	fmt.Printf("* Created:       %v\n", feed.CreatedAt)
+	fmt.Printf("* Updated:       %v\n", feed.UpdatedAt)
+	fmt.Printf("* Name:          %s\n", feed.Name)
+	fmt.Printf("* URL:           %s\n", feed.Url)
+	fmt.Printf("* User:          %s\n", user.Name)
 }
 
 func FollowHandler(s *config.State, cmd Command) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 
 	defer cancel()
-	userFeeds, err := s.Db.GetUserFeeds(ctx)
+
+	users, err := s.Db.GetUsers(ctx)
 	if err != nil {
-		return fmt.Errorf("FollowHandler failed fetching user feeds", err)
+		return fmt.Errorf("FollowHandler failed fetching users: %w", err)
 	}
 
+	if len(users) == 0 {
+		return fmt.Errorf("no users in database to create a feed follow record")
+	}
+
+	if len(cmd.Args) == 0 {
+		return fmt.Errorf("no argument was given")
+	}
+
+	if len(cmd.Args) > 1 {
+		return fmt.Errorf("command only takes one argumeant: <command> [url]")
+	}
+
+	if !isValidUrl(cmd.Args[0]) {
+		return fmt.Errorf("Please provide valid url: <command> 【[url]】")
+	}
+
+	feedId, err := s.Db.GetFeedId(ctx, cmd.Args[0])
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("failed fetching feed id: %w", err)
+		}
+	}
 
 	feedFollowParams := database.CreateFeedFollowParams{
-
+		UserID:    fetchUserId(users, s),
+		FeedID:    feedId,
+		CreatedAt: sql.NullTime{Time: time.Now(), Valid: true},
+		UpdatedAt: sql.NullTime{Time: time.Now(), Valid: true},
 	}
 
-	NewFeedFollow, err := s.Db.CreateFeedFollow(ctx)
+	feedFollow, err := s.Db.CreateFeedFollow(ctx, feedFollowParams)
+	if err != nil {
+		return fmt.Errorf("failed creating feed follow record: %w", err)
+	}
+
+	fmt.Printf("* FeedName:      %s\n", feedFollow.FeedName)
+	fmt.Printf("* CurrentUser:   %s\n", s.StConfig.Current_user_name)
+	fmt.Printf("* Created:       %v\n", feedFollow.CreatedAt)
+	fmt.Printf("* Updated:       %v\n", feedFollow.UpdatedAt)
+
+	return nil
+}
+
+func FeedFollowingHandler(s *config.State, cmd Command) error {
+	if len(cmd.Args) > 0 {
+		return fmt.Errorf("command does not accept any arguments")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+
+	defer cancel()
+
+	users, err := s.Db.GetUsers(ctx)
+	if err != nil {
+		return fmt.Errorf("FollowHandler failed fetching users: %w", err)
+	}
+
+	// see if we still need to use this
+	if len(users) == 0 || s.StConfig.Current_user_name == "[None]" {
+		return fmt.Errorf("no users in database to create a feed follow record")
+	}
+	currentUser, err := s.Db.GetUser(ctx, s.StConfig.Current_user_name)
+	if currentUser.Name == "[None]" {
+		return fmt.Errorf("no users in database to create a feed follow record")
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed getting user: %s %w", s.StConfig.Current_user_name, err)
+	}
+
+	feedFollows, err := s.Db.GetFeedFollowsForUser(ctx, currentUser.ID)
+	if err != nil {
+		return fmt.Errorf("failed getting feed follows: %w", err)
+	}
+
+	fmt.Println("")
 
 	return nil
 }

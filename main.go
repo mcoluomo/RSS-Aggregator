@@ -38,6 +38,7 @@ func main() {
 	cmds.Register("agg", cli.AggHandler)
 	cmds.Register("addfeed", cli.AddFeedHandler)
 	cmds.Register("feeds", cli.PrintFeedsHandler)
+	cmds.Register("follow", cli.FollowHandler)
 
 	if len(os.Args) < 2 {
 		log.Fatalf("Please provide <command> [arg]")
