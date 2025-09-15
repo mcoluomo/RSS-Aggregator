@@ -23,7 +23,7 @@ SELECT inserted_feed_follow.created_at, inserted_feed_follow.updated_at, inserte
     feeds.name AS feed_name
 FROM inserted_feed_follow
 JOIN users ON inserted_feed_follow.user_id = users.id
-JOIN feeds ON inserted_feed_follow.feed_id = users.id
+JOIN feeds ON inserted_feed_follow.feed_id = feeds.id
 `
 
 type CreateFeedFollowParams struct {

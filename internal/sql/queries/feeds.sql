@@ -12,7 +12,7 @@ SELECT inserted_feed_follow.*,
     feeds.name AS feed_name
 FROM inserted_feed_follow
 JOIN users ON inserted_feed_follow.user_id = users.id
-JOIN feeds ON inserted_feed_follow.feed_id = users.id;
+JOIN feeds ON inserted_feed_follow.feed_id = feeds.id;
 
 
 -- name: GetFeedId :one

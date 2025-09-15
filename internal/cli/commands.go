@@ -61,7 +61,7 @@ func LoginHandler(s *config.State, cmd Command) error {
 	// add an else clause that tells the user that they are already logged in
 
 	s.StConfig.SetUser(cmd.Args[0])
-	fmt.Printf("⇒ 【%s】\nlogin with 【%s】 was successful\n", cmd.Args[0], cmd.Args[0])
+	fmt.Printf("login with 【%s】 was successful\n", cmd.Args[0])
 
 	return nil
 }
@@ -212,7 +212,24 @@ func AddFeedHandler(s *config.State, cmd Command) error {
 		return fmt.Errorf("failed creating feed")
 	}
 
-	fmt.Printf("%v successfuly created feed for user 【%s】\n", feed.CreatedAt, s.StConfig.Current_user_name)
+	fmt.Println("successfully created feed")
+	feedFollowParams := database.CreateFeedFollowParams{
+		UserID:    feed.UserID,
+		FeedID:    feed.ID,
+		CreatedAt: sql.NullTime{Time: time.Now(), Valid: true},
+		UpdatedAt: sql.NullTime{Time: time.Now(), Valid: true},
+	}
+
+	fmt.Println("inserted feed follow record")
+	feedFollow, err := s.Db.CreateFeedFollow(ctx, feedFollowParams)
+	if err != nil {
+		return fmt.Errorf("failed creating feed follow record: %w", err)
+	}
+	fmt.Printf("	* FeedName:      %s\n", feedFollow.FeedName)
+	fmt.Printf("	* CurrentUser:   %s\n", s.StConfig.Current_user_name)
+
+	fmt.Printf("successfuly added feed for user 【%s】\n", s.StConfig.Current_user_name)
+	fmt.Printf("%v\n", feed.CreatedAt.Time)
 
 	return nil
 }
@@ -327,9 +344,10 @@ func FollowHandler(s *config.State, cmd Command) error {
 	}
 
 	fmt.Printf("* FeedName:      %s\n", feedFollow.FeedName)
-	fmt.Printf("* CurrentUser:   %s\n", s.StConfig.Current_user_name)
-	fmt.Printf("* Created:       %v\n", feedFollow.CreatedAt)
-	fmt.Printf("* Updated:       %v\n", feedFollow.UpdatedAt)
+	fmt.Printf("* FollowerName:   %s\n", s.StConfig.Current_user_name)
+	fmt.Printf("* Created:       %v\n", feedFollow.CreatedAt.Time)
+	fmt.Printf("* Updated:       %v\n\n", feedFollow.UpdatedAt.Time)
+	fmt.Printf("following feed %s", feedFollow.FeedName)
 
 	return nil
 }
@@ -344,28 +362,23 @@ func FeedFollowingHandler(s *config.State, cmd Command) error {
 
 	users, err := s.Db.GetUsers(ctx)
 	if err != nil {
-		return fmt.Errorf("FollowHandler failed fetching users: %w", err)
+		return fmt.Errorf("failed getting user: %s %w", s.StConfig.Current_user_name, err)
 	}
 
 	// see if we still need to use this
 	if len(users) == 0 || s.StConfig.Current_user_name == "[None]" {
 		return fmt.Errorf("no users in database to create a feed follow record")
 	}
-	currentUser, err := s.Db.GetUser(ctx, s.StConfig.Current_user_name)
-	if currentUser.Name == "[None]" {
-		return fmt.Errorf("no users in database to create a feed follow record")
-	}
 
-	if err != nil {
-		return fmt.Errorf("failed getting user: %s %w", s.StConfig.Current_user_name, err)
-	}
-
-	feedFollows, err := s.Db.GetFeedFollowsForUser(ctx, currentUser.ID)
+	feedFollows, err := s.Db.GetFeedFollowsForUser(ctx, fetchUserId(users, s))
 	if err != nil {
 		return fmt.Errorf("failed getting feed follows: %w", err)
 	}
 
-	fmt.Println("")
+	fmt.Printf("Getting all feeds that 【%s】 is following...\n", s.StConfig.Current_user_name)
+	for _, feedFollow := range feedFollows {
+		fmt.Printf("* Feed: 【%s】\n", feedFollow.FeedName)
+	}
 
 	return nil
 }
