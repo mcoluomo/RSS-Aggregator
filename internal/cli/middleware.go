@@ -2,35 +2,33 @@ package cli
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"net/url"
 	"time"
 
-	"github.com/mcoluomo/RSS-Aggregator/internal/cli"
 	"github.com/mcoluomo/RSS-Aggregator/internal/config"
 	"github.com/mcoluomo/RSS-Aggregator/internal/database"
 )
 
-func MiddlewareLoggedIn(handler func(s *config.State, cmd Command, user database.User) error) func(*config.State, cli.Command) error {
-	return func(s *config.State, cmd cli.Command) error {
+func MiddlewareLoggedIn(handler func(s *config.State, cmd Command, user database.User) error) func(*config.State, Command) error {
+	return func(s *config.State, cmd Command) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 
 		defer cancel()
 
-		users, err := s.Db.GetUsers(ctx)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				// change this message tomorrow
-				return fmt.Errorf("failed getting users: %s %w", s.StConfig.Current_user_name, err)
-			}
+		if s.StConfig.Current_user_name == "[None]" {
+			return fmt.Errorf("no users in registered in database")
 		}
 
-		// see if we still need to use this
-		if len(users) == 0 || s.StConfig.Current_user_name == "[None]" {
-			return fmt.Errorf("no users in database to create a feed follow record")
+		user, err := s.Db.GetUser(ctx, s.StConfig.Current_user_name)
+		if err != nil {
+			return fmt.Errorf("%w: failed fetching user: 【%s】", err, s.StConfig.Current_user_name)
 		}
+
+		if err = handler(s, cmd, user); err != nil {
+			return fmt.Errorf("failed calling handler")
+		}
+
 		return nil
 	}
 }

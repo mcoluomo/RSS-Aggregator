@@ -100,7 +100,7 @@ func AddFeedHandler(s *config.State, cmd Command, user database.User) error {
 	fmt.Printf("	* FeedName:      %s\n", feedFollow.FeedName)
 	fmt.Printf("	* CurrentUser:   %s\n", s.StConfig.Current_user_name)
 
-	fmt.Printf("successfuly added feed for user 【%s】\n", s.StConfig.Current_user_name)
+	fmt.Printf("successfuly added feed for user: 【%s】\n", s.StConfig.Current_user_name)
 	fmt.Printf("%v\n", feed.CreatedAt.Time)
 
 	return nil
