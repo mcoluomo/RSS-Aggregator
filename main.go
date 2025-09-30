@@ -26,7 +26,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("error reading config: %v", err)
 	}
-	fmt.Printf("Reading config with the contents: %+v\n", cfg)
+	fmt.Printf("current user: %v\n", cfg.Current_user_name)
 
 	cfgState := &config.State{StConfig: &cfg, Db: dbQueries}
 
@@ -54,5 +54,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("error reading config: %v", err)
 	}
-	fmt.Printf("\nReading config again: %+v\n", cfg)
+
+	fmt.Printf("current user: %v\n", cfg.Current_user_name)
 }

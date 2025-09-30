@@ -16,15 +16,6 @@ func FollowHandler(s *config.State, cmd Command, user database.User) error {
 
 	defer cancel()
 
-	users, err := s.Db.GetUsers(ctx)
-	if err != nil {
-		return fmt.Errorf("FollowHandler failed fetching users: %w", err)
-	}
-
-	if len(users) == 0 {
-		return fmt.Errorf("no users in database to create a feed follow record")
-	}
-
 	if len(cmd.Args) == 0 {
 		return fmt.Errorf("no argument was given")
 	}
@@ -44,8 +35,10 @@ func FollowHandler(s *config.State, cmd Command, user database.User) error {
 		}
 	}
 
+	user, _ = s.Db.GetUser(ctx, s.StConfig.Current_user_name)
+
 	feedFollowParams := database.CreateFeedFollowParams{
-		UserID:    fetchUserId(users, s),
+		UserID:    user.ID,
 		FeedID:    feedId,
 		CreatedAt: sql.NullTime{Time: time.Now(), Valid: true},
 		UpdatedAt: sql.NullTime{Time: time.Now(), Valid: true},
@@ -56,11 +49,13 @@ func FollowHandler(s *config.State, cmd Command, user database.User) error {
 		return fmt.Errorf("failed creating feed follow record: %w", err)
 	}
 
+	fmt.Println("----------------------------------------")
 	fmt.Printf("* FeedName:      %s\n", feedFollow.FeedName)
 	fmt.Printf("* FollowerName:   %s\n", s.StConfig.Current_user_name)
 	fmt.Printf("* Created:       %v\n", feedFollow.CreatedAt.Time)
-	fmt.Printf("* Updated:       %v\n\n", feedFollow.UpdatedAt.Time)
-	fmt.Printf("following feed %s", feedFollow.FeedName)
+	fmt.Printf("* Updated:       %v\n", feedFollow.UpdatedAt.Time)
+	fmt.Println("----------------------------------------")
+	fmt.Println("following feed", feedFollow.FeedName)
 
 	return nil
 }
@@ -73,25 +68,20 @@ func FeedFollowingHandler(s *config.State, cmd Command, user database.User) erro
 
 	defer cancel()
 
-	users, err := s.Db.GetUsers(ctx)
-	if err != nil {
-		return fmt.Errorf("failed getting user: %s %w", s.StConfig.Current_user_name, err)
-	}
+	user, _ = s.Db.GetUser(ctx, s.StConfig.Current_user_name)
 
-	// see if we still need to use this
-	if len(users) == 0 || s.StConfig.Current_user_name == "[None]" {
-		return fmt.Errorf("no users in database to create a feed follow record")
-	}
-
-	feedFollows, err := s.Db.GetFeedFollowsForUser(ctx, fetchUserId(users, s))
+	feedFollows, err := s.Db.GetFeedFollowsForUser(ctx, user.ID)
 	if err != nil {
 		return fmt.Errorf("failed getting feed follows: %w", err)
 	}
 
 	fmt.Printf("Getting all feeds that 【%s】 is following...\n", s.StConfig.Current_user_name)
+	fmt.Println("---------------------------------")
 	for _, feedFollow := range feedFollows {
 		fmt.Printf("* Feed: 【%s】\n", feedFollow.FeedName)
 	}
+
+	fmt.Println("---------------------------------")
 
 	return nil
 }

@@ -22,7 +22,9 @@ func AggHandler(s *config.State, cmd Command) error {
 		return fmt.Errorf("failed fetching url feed %w", err)
 	}
 
+	fmt.Println("----------------------------------------")
 	fmt.Printf("\nlisting feed data:\n %v", feedData)
 
+	fmt.Println("----------------------------------------")
 	return nil
 }

@@ -21,7 +21,11 @@ func ResetHandler(s *config.State, cmd Command) error {
 	}
 
 	s.StConfig.SetUser("[None]")
-	fmt.Println("All users have been deleted!")
+
+	fmt.Println("----------------------------------------")
+	fmt.Println("Removing...")
+	fmt.Println("	All users have been deleted!")
+	fmt.Println("============= ALL REMOVED ==============")
 
 	return nil
 }

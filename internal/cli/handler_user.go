@@ -29,6 +29,7 @@ func UserHandler(s *config.State, cmd Command) error {
 		fmt.Println("No users to list")
 	}
 
+	fmt.Println("---------------------------------")
 	for _, user := range users {
 		if user.Name == s.StConfig.Current_user_name {
 			fmt.Println("* " + s.StConfig.Current_user_name + " (current)")
@@ -36,7 +37,7 @@ func UserHandler(s *config.State, cmd Command) error {
 			fmt.Println("* " + user.Name)
 		}
 	}
-
+	fmt.Println("---------------------------------")
 	return nil
 }
 
@@ -44,15 +45,6 @@ func AddFeedHandler(s *config.State, cmd Command, user database.User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 
 	defer cancel()
-
-	users, err := s.Db.GetUsers(ctx)
-	if err != nil {
-		return fmt.Errorf("AddFeedHandler failed fetching users: %w", err)
-	}
-
-	if len(users) == 0 {
-		return fmt.Errorf("no users in database to add a feed")
-	}
 
 	if len(cmd.Args) > 2 {
 		return fmt.Errorf("command only takes two argumeants: <command> 【[feedName]】 【[url]】")
@@ -70,13 +62,15 @@ func AddFeedHandler(s *config.State, cmd Command, user database.User) error {
 		return fmt.Errorf("Please provide valid url: <command> [feedName] 【[url]】")
 	}
 
+	user, _ = s.Db.GetUser(ctx, s.StConfig.Current_user_name)
+
 	newFeed := database.CreateFeedParams{
 		ID:        uuid.New(),
 		CreatedAt: sql.NullTime{Time: time.Now(), Valid: true},
 		UpdatedAt: sql.NullTime{Time: time.Now(), Valid: true},
 		Name:      cmd.Args[0],
 		Url:       cmd.Args[1],
-		UserID:    fetchUserId(users, s),
+		UserID:    user.ID,
 	}
 
 	feed, err := s.Db.CreateFeed(ctx, newFeed)
@@ -84,7 +78,6 @@ func AddFeedHandler(s *config.State, cmd Command, user database.User) error {
 		return fmt.Errorf("failed creating feed")
 	}
 
-	fmt.Println("successfully created feed")
 	feedFollowParams := database.CreateFeedFollowParams{
 		UserID:    feed.UserID,
 		FeedID:    feed.ID,
@@ -92,7 +85,7 @@ func AddFeedHandler(s *config.State, cmd Command, user database.User) error {
 		UpdatedAt: sql.NullTime{Time: time.Now(), Valid: true},
 	}
 
-	fmt.Println("inserted feed follow record")
+	fmt.Println("---------------------------------")
 	feedFollow, err := s.Db.CreateFeedFollow(ctx, feedFollowParams)
 	if err != nil {
 		return fmt.Errorf("failed creating feed follow record: %w", err)
@@ -100,17 +93,10 @@ func AddFeedHandler(s *config.State, cmd Command, user database.User) error {
 	fmt.Printf("	* FeedName:      %s\n", feedFollow.FeedName)
 	fmt.Printf("	* CurrentUser:   %s\n", s.StConfig.Current_user_name)
 
+	fmt.Println("---------------------------------")
+
 	fmt.Printf("successfuly added feed for user: 【%s】\n", s.StConfig.Current_user_name)
 	fmt.Printf("%v\n", feed.CreatedAt.Time)
 
 	return nil
-}
-
-func fetchUserId(users []database.User, s *config.State) uuid.UUID {
-	for _, user := range users {
-		if user.Name == s.StConfig.Current_user_name {
-			return user.ID
-		}
-	}
-	return uuid.Nil
 }

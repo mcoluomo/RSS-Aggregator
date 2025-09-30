@@ -57,8 +57,10 @@ func LoginHandler(s *config.State, cmd Command) error {
 	// add an else clause that tells the user that they are already logged in
 
 	s.StConfig.SetUser(cmd.Args[0])
+	fmt.Println("----------------------------------------")
 	fmt.Printf("login with 【%s】 was successful\n", cmd.Args[0])
 
+	fmt.Println("----------------------------------------")
 	return nil
 }
 
@@ -95,7 +97,9 @@ func RegisterHandler(s *config.State, cmd Command) error {
 	}
 
 	s.StConfig.SetUser(cmd.Args[0])
-	fmt.Printf("user 【%s】 was successfully registered", cmd.Args[0])
+	fmt.Println("----------------------------------------")
+	fmt.Printf("【%s】 was successfully registered\n", cmd.Args[0])
+	fmt.Println("----------------------------------------")
 
 	return nil
 }

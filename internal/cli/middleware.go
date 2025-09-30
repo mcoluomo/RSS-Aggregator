@@ -20,9 +20,18 @@ func MiddlewareLoggedIn(handler func(s *config.State, cmd Command, user database
 			return fmt.Errorf("no users in registered in database")
 		}
 
+		users, err := s.Db.GetUsers(ctx)
+		if err != nil {
+			return fmt.Errorf("MiddlewareLogin failed fetching users: %w", err)
+		}
+
+		if len(users) == 0 {
+			return fmt.Errorf("no users in database")
+		}
+
 		user, err := s.Db.GetUser(ctx, s.StConfig.Current_user_name)
 		if err != nil {
-			return fmt.Errorf("%w: failed fetching user: 【%s】", err, s.StConfig.Current_user_name)
+			return fmt.Errorf("\n%w: failed fetching user: 【%s】", err, s.StConfig.Current_user_name)
 		}
 
 		if err = handler(s, cmd, user); err != nil {
