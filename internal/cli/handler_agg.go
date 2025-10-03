@@ -9,6 +9,8 @@ import (
 	"github.com/mcoluomo/RSS-Aggregator/internal/rss"
 )
 
+const feedUrl string = "https://www.wagslane.dev/index.xml"
+
 func AggHandler(s *config.State, cmd Command) error {
 	if len(cmd.Args) > 0 {
 		return fmt.Errorf("command does not accept any arguments")

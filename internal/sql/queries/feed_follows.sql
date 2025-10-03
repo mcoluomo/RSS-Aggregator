@@ -20,4 +20,8 @@ SELECT feed_follows.*,
     FROM feed_follows
 JOIN users ON feed_follows.user_id = users.id
 JOIN feeds ON feed_follows.feed_id = feeds.id
-WHERE WHERE feed_follows.user_id = $1;
+WHERE feed_follows.user_id = $1;
+
+-- name: DeleteFeedFollowRow :exec
+DELETE FROM feed_follows
+WHERE feed_follows.user_id = $1 AND feed_follows.feed_id = $2;

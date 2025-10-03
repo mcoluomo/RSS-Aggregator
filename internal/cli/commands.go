@@ -20,8 +20,6 @@ type Commands struct {
 	Handlers map[string]func(*config.State, Command) error
 }
 
-const feedUrl string = "https://www.wagslane.dev/index.xml"
-
 func (c *Commands) Run(s *config.State, cmd Command) error {
 	handler, exist := c.Handlers[cmd.Name]
 	if !exist {

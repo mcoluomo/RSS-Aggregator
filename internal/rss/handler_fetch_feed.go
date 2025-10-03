@@ -35,9 +35,10 @@ func FetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 	if feedURL == "" {
 		return nil, fmt.Errorf("feed URL cannot be empty")
 	}
+
 	u, err := url.Parse(feedURL)
 	if err != nil || u.Scheme == "" || u.Host == "" {
-		return nil, fmt.Errorf("invalid feed URL: %w", err)
+		return nil, fmt.Errorf("%w: invalid feed URL", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)

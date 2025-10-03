@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -17,7 +16,7 @@ func FollowHandler(s *config.State, cmd Command, user database.User) error {
 	defer cancel()
 
 	if len(cmd.Args) == 0 {
-		return fmt.Errorf("no argument was given")
+		return fmt.Errorf("Please provide the valid argument for this command: <command 【[url]】")
 	}
 
 	if len(cmd.Args) > 1 {
@@ -30,9 +29,7 @@ func FollowHandler(s *config.State, cmd Command, user database.User) error {
 
 	feedId, err := s.Db.GetFeedId(ctx, cmd.Args[0])
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("failed fetching feed id: %w", err)
-		}
+		return fmt.Errorf("%w: failed fetching feed id", err)
 	}
 
 	user, _ = s.Db.GetUser(ctx, s.StConfig.Current_user_name)

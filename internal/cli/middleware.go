@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mcoluomo/RSS-Aggregator/internal/config"
 	"github.com/mcoluomo/RSS-Aggregator/internal/database"
 )
@@ -46,4 +47,13 @@ func isValidUrl(str string) bool {
 	u, err := url.Parse(str)
 
 	return err == nil && u.Scheme != "" && u.Host != ""
+}
+
+func getUserId(s *config.State) uuid.UUID {
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+
+	defer cancel()
+
+	user, _ := s.Db.GetUser(ctx, s.StConfig.Current_user_name)
+	return user.ID
 }
