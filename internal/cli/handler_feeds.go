@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mcoluomo/RSS-Aggregator/internal/config"
 	"github.com/mcoluomo/RSS-Aggregator/internal/database"
+	"github.com/mcoluomo/RSS-Aggregator/internal/rss"
 )
 
 func PrintFeedsHandler(s *config.State, cmd Command) error {
@@ -82,17 +83,18 @@ func AddFeedHandler(s *config.State, cmd Command, user database.User) error {
 	user, _ = s.Db.GetUser(ctx, s.StConfig.Current_user_name)
 
 	newFeed := database.CreateFeedParams{
-		ID:        uuid.New(),
-		CreatedAt: sql.NullTime{Time: time.Now(), Valid: true},
-		UpdatedAt: sql.NullTime{Time: time.Now(), Valid: true},
-		Name:      cmd.Args[0],
-		Url:       cmd.Args[1],
-		UserID:    user.ID,
+		ID:            uuid.New(),
+		CreatedAt:     sql.NullTime{Time: time.Now(), Valid: true},
+		UpdatedAt:     sql.NullTime{Time: time.Now(), Valid: true},
+		Name:          cmd.Args[0],
+		Url:           cmd.Args[1],
+		UserID:        user.ID,
+		LastFetchedAt: sql.NullTime{Time: time.Now(), Valid: true},
 	}
 
 	feed, err := s.Db.CreateFeed(ctx, newFeed)
 	if err != nil {
-		return fmt.Errorf("failed creating feed")
+		return fmt.Errorf("%w: failed creating feed", err)
 	}
 
 	feedFollowParams := database.CreateFeedFollowParams{
@@ -116,5 +118,32 @@ func AddFeedHandler(s *config.State, cmd Command, user database.User) error {
 	fmt.Printf("successfuly added feed for user: 【%s】\n", s.StConfig.Current_user_name)
 	fmt.Printf("%v\n", feed.CreatedAt.Time)
 
+	return nil
+}
+
+func ScrapeFeedsHander(s *config.State, cmd Command) error {
+	if len(cmd.Args) != 0 {
+		return fmt.Errorf("command doesnt take any arguments")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+
+	defer cancel()
+
+	nextFeed, err := s.Db.GetNextFeedToFetch(ctx)
+	if err != nil {
+		return fmt.Errorf("%w: failed fetching next feed", err)
+	}
+	if err = s.Db.MarkFeedFetched(ctx, nextFeed.ID); err != nil {
+		return fmt.Errorf("%w: failed trying to mark feed", err)
+	}
+
+	feedDate, err := rss.FetchFeed(ctx, nextFeed.Url)
+	if err != nil {
+		return fmt.Errorf("%w: ScrapeFeedsHander failed fetching feed", err)
+	}
+	for _, feedItem := range feedDate.Channel.Item {
+		fmt.Printf("* FeedItemTitle: 【%s】\n", feedItem.Title)
+	}
 	return nil
 }

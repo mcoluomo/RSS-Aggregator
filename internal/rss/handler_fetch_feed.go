@@ -66,7 +66,7 @@ func FetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 	}
 	var rssFeed RSSFeed
 	if err = xml.Unmarshal([]byte(data), &rssFeed); err != nil {
-		return nil, fmt.Errorf("failed to decode data: %w", err)
+		return nil, fmt.Errorf("%w: failed to decode data", err)
 	}
 
 	rssFeed.Channel.Title = html.UnescapeString(rssFeed.Channel.Title)

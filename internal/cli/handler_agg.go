@@ -12,9 +12,14 @@ import (
 const feedUrl string = "https://www.wagslane.dev/index.xml"
 
 func AggHandler(s *config.State, cmd Command) error {
-	if len(cmd.Args) > 0 {
-		return fmt.Errorf("command does not accept any arguments")
+	if len(cmd.Args) == 0 {
+		return fmt.Errorf("Please provide the valid argument for this command: <command> [time_between_reqs]")
 	}
+
+	if len(cmd.Args) > 1 {
+		return fmt.Errorf("command only takes one argumeant: <command> [time_between_reqs]")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 
 	defer cancel()
@@ -25,8 +30,10 @@ func AggHandler(s *config.State, cmd Command) error {
 	}
 
 	fmt.Println("----------------------------------------")
-	fmt.Printf("\nlisting feed data:\n %v", feedData)
+	for _, post := range feedData.Channel.Item {
+		fmt.Printf("\n\nlisting feed post:\\n 【%v】", post)
+	}
 
-	fmt.Println("----------------------------------------")
+	fmt.Println("\n----------------------------------------")
 	return nil
 }

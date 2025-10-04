@@ -20,16 +20,5 @@ SELECT EXISTS(SELECT 1 FROM users WHERE name = $1);
 -- name: DeleteAllUsers :exec
 DELETE FROM users;
 
-
-VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6
-)
-RETURNING *;
-
 -- name: GetUserById :one
 SELECT * FROM users WHERE id = $1;

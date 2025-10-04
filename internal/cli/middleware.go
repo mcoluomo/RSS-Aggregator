@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,7 +37,7 @@ func MiddlewareLoggedIn(handler func(s *config.State, cmd Command, user database
 		}
 
 		if err = handler(s, cmd, user); err != nil {
-			return fmt.Errorf("failed calling handler")
+			return fmt.Errorf("%w: command 【%s】 failed executing handler", err, os.Args[1])
 		}
 
 		return nil
