@@ -10,3 +10,5 @@ VALUES (
     $7
 )
 RETURNING *;
+
+-- name: GetUserPosts :many
