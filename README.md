@@ -164,9 +164,3 @@ gator <command> [arguments]
 ## License
 
 MIT
-
-```
-
----
-
-Let me know if you want to add more advanced usage, troubleshooting, or developer notes!
