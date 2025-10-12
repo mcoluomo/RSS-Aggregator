@@ -41,6 +41,7 @@ func main() {
 	cmds.Register("follow", cli.MiddlewareLoggedIn(cli.FollowHandler))
 	cmds.Register("following", cli.MiddlewareLoggedIn(cli.FeedFollowingHandler))
 	cmds.Register("unfollow", cli.MiddlewareLoggedIn(cli.UnfollowFeedFollow))
+	cmds.Register("browse", cli.BrowseFeedsHandler)
 
 	if len(os.Args) < 2 {
 		log.Fatalf("\n---------------------------------\nPlease provide <command> [arg]\n---------------------------------\n")

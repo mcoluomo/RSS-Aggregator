@@ -46,12 +46,11 @@ func PrintFeedsHandler(s *config.State, cmd Command) error {
 func printFeed(feed database.Feed, user database.User) {
 	fmt.Println("----------------------------------------")
 	fmt.Printf("* ID:            %s\n", feed.ID)
-	fmt.Printf("* Created:       %v\n", feed.CreatedAt)
-	fmt.Printf("* Updated:       %v\n", feed.UpdatedAt)
+	fmt.Printf("* Created:       %v\n", feed.CreatedAt.Time)
+	fmt.Printf("* Updated:       %v\n", feed.UpdatedAt.Time)
 	fmt.Printf("* Name:          %s\n", feed.Name)
 	fmt.Printf("* URL:           %s\n", feed.Url)
 	fmt.Printf("* User:          %s\n", user.Name)
-	fmt.Println("----------------------------------------")
 }
 
 func AddFeedHandler(s *config.State, cmd Command, user database.User) error {
@@ -60,7 +59,7 @@ func AddFeedHandler(s *config.State, cmd Command, user database.User) error {
 	defer cancel()
 
 	if len(cmd.Args) == 0 {
-		return fmt.Errorf("Please provide the valid argument for this command: <command [url]")
+		return fmt.Errorf("Please provide the valid argument for this command: <command> [url]")
 	}
 
 	if len(cmd.Args) > 2 {

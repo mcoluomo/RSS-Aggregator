@@ -37,6 +37,7 @@ func MiddlewareLoggedIn(handler func(s *config.State, cmd Command, user database
 		}
 
 		if err = handler(s, cmd, user); err != nil {
+			fmt.Println("olu doesnt know?")
 			return fmt.Errorf("%w: command 【%s】 failed executing handler", err, os.Args[1])
 		}
 

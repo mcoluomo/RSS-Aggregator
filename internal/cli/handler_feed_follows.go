@@ -3,7 +3,9 @@ package cli
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/mcoluomo/RSS-Aggregator/internal/config"
@@ -16,7 +18,7 @@ func FollowHandler(s *config.State, cmd Command, user database.User) error {
 	defer cancel()
 
 	if len(cmd.Args) == 0 {
-		return fmt.Errorf("Please provide the valid argument for this command: <command 【[url]】")
+		return fmt.Errorf("Please provide the valid argument for this command: <command> 【[url]】")
 	}
 
 	if len(cmd.Args) > 1 {
@@ -43,6 +45,10 @@ func FollowHandler(s *config.State, cmd Command, user database.User) error {
 
 	feedFollow, err := s.Db.CreateFeedFollow(ctx, feedFollowParams)
 	if err != nil {
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+			fmt.Printf("You are already following this feed: %s\n", cmd.Args[0])
+			return nil
+		}
 		return fmt.Errorf("failed creating feed follow record: %w", err)
 	}
 
@@ -51,7 +57,6 @@ func FollowHandler(s *config.State, cmd Command, user database.User) error {
 	fmt.Printf("* FollowerName:   %s\n", s.StConfig.Current_user_name)
 	fmt.Printf("* Created:       %v\n", feedFollow.CreatedAt.Time)
 	fmt.Printf("* Updated:       %v\n", feedFollow.UpdatedAt.Time)
-	fmt.Println("----------------------------------------")
 	fmt.Println("following feed", feedFollow.FeedName)
 
 	return nil
@@ -102,6 +107,9 @@ func UnfollowFeedFollow(s *config.State, cmd Command, user database.User) error 
 
 	feedId, err := s.Db.GetFeedId(ctx, cmd.Args[0])
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("No feed found with that URL. Please add the feed first.")
+		}
 		return fmt.Errorf("%w: failed fetching feed id", err)
 	}
 

@@ -10,16 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type Browse struct {
-	CreatedAt   sql.NullTime
-	UpdatedAt   sql.NullTime
-	Title       string
-	Url         string
-	Description sql.NullString
-	PublishedAt sql.NullTime
-	FeedID      uuid.UUID
-}
-
 type Feed struct {
 	ID            uuid.UUID
 	CreatedAt     sql.NullTime
@@ -35,6 +25,16 @@ type FeedFollow struct {
 	UpdatedAt sql.NullTime
 	UserID    uuid.UUID
 	FeedID    uuid.UUID
+}
+
+type Post struct {
+	CreatedAt   sql.NullTime
+	UpdatedAt   sql.NullTime
+	Title       string
+	Url         string
+	Description sql.NullString
+	PublishedAt sql.NullTime
+	FeedID      uuid.UUID
 }
 
 type User struct {
